@@ -1,0 +1,7 @@
+---
+
+- name: Add the OS specific variables -> {{ ansible_os_family }}
+  include_vars: "{{ ansible_os_family }}.yml"
+
+- name: Update packages using correct package manager -> {{ ansible_os_family }}
+  include: "{{ ansible_os_family }}.yml"

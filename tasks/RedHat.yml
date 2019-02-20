@@ -1,0 +1,65 @@
+---
+# task file to install/update/configure ntp on RHEL/CentOS
+
+- name: YUM | Ensure ntp is installed and up-to-date
+  become: true
+  become_user: root
+  yum:
+    name: ntp
+    state: present
+    update_cache: true
+    disable_gpg_check: true
+
+- name: TEMPLATE | Template the /etc/ntp.conf file
+  become: true
+  become_user: root
+  template:
+    src: ntp.conf.j2
+    dest: /etc/ntp.conf
+    owner: root
+    group: root
+    mode: 'u=rw,g=r,o=r'
+
+- name: STAT | Check if chrony service exists
+  stat:
+    path: /usr/lib/systemd/system/chronyd.service
+  register: ntp_chrony
+
+- name: SYSTEMD | Ensure chronyd is stopped and disabled
+  become: true
+  systemd:
+    name: chronyd
+    enabled: false
+    state: stopped
+    daemon_reload: true
+  when: ntp_chrony.stat.exists
+
+- name: SYSTEMD | Ensure ntpd is started and enabled
+  become: true
+  systemd:
+    name: ntpd
+    enabled: true
+    state: restarted
+    daemon_reload: true
+
+- name: STAT | Check if firewall service exists
+  stat:
+    path: /usr/lib/systemd/system/firewalld.service
+  register: firewall
+
+- name: COMMAND | Check if firewalld is running
+  command: 'systemctl status firewalld'
+  when: firewall.stat.exists
+  register: firewall_status
+  ignore_errors: true
+  changed_when: false
+
+- name: FIREWALLD | Ensure NTP Service is enabled in firewall
+  become: true
+  become_user: root
+  firewalld:
+    service: ntp
+    permanent: true
+    state: enabled
+    immediate: true
+  when: firewall.stat.exists and firewall_status.rc == 0

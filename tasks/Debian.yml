@@ -1,0 +1,55 @@
+---
+# task file to install/update/configure ntp on Debian based systems
+
+- name: APT | Ensure ntp is installed and up-to-date
+  become: true
+  become_user: root
+  apt:
+    name: ntp
+    state: present
+    update_cache: true
+
+- name: TEMPLATE | Template the etc/ntp.conf file
+  become: true
+  become_user: root
+  template:
+    src: ntp.conf.j2
+    dest: /etc/ntp.conf
+    owner: root
+    group: root
+    mode: 'u=rw,g=r,o=r'
+
+- name: STAT | Check if chrony service exists
+  stat:
+    path: /usr/lib/systemd/system/chronyd.service
+  register: ntp_chrony
+
+- name: SYSTEMD | Ensure chronyd is stopped and disabled
+  become: true
+  systemd:
+    name: chronyd
+    enabled: false
+    state: stopped
+    daemon_reload: true
+  when: ntp_chrony.stat.exists
+
+- name: SYSTEMD | Ensure ntpd is started and enabled
+  become: true
+  systemd:
+    name: ntp
+    enabled: true
+    state: restarted
+    daemon_reload: true
+
+- name: STAT | Check if ufw service exists
+  stat:
+    path: /usr/sbin/ufw
+  register: firewall
+
+- name: UFW | Ensure NTP Service is enabled in firewall
+  become: true
+  become_user: root
+  command: 'ufw allow ntp'
+  when:
+    - firewall is defined
+#    - firewall_status.rc == 0
