@@ -1,7 +1,7 @@
 ---
 # task file to install/update/configure ntp on RHEL/CentOS
 
-- name: YUM | Ensure ntp is installed and up-to-date
+- name: YUM | Ensure ntp is installed and up-to-date on 7
   become: true
   become_user: root
   yum:
@@ -9,6 +9,10 @@
     state: present
     update_cache: true
     disable_gpg_check: true
+  vars:
+    ansible_python_interpreter: /usr/bin/python
+  when:
+    - "ansible_distribution_major_version | int <= 7"    
 
 - name: TEMPLATE | Template the /etc/ntp.conf file
   become: true
